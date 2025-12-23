@@ -1,0 +1,1 @@
+"""MiniModal test suite."""

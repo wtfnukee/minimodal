@@ -1,0 +1,245 @@
+# MiniModal Project .gitignore
+
+*.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+
+# Test and coverage
+.pytest_cache/
+.coverage
+.htmlcov/
+
+# IDE specific
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Dependency directories
+deps/
+
+# Environment variables
+.env
+.env.local
+.env*.local
+
+# Local settings
+.claude/
+
+# Cache directories
+.ruff_cache/
+.pytest_cache/
+
+# Docker
+.dockerignore
+
+# MacOS
+.DS_Store
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+
+# Python package files
+*.whl
+*.tar.gz
+
+# Lock files (keep uv.lock as it's needed for reproducibility)
+!uv.lock
+
+# Local development files
+minimodal.db
+test_debug.db
+
+# Secret keys
+.minimodal_key
+
+# Volume data
+minimodal_volumes/
+
+# Test results
+.test_results/
+
+# Documentation build
+_docs/
+build/
+MDs/
+
+# Python cache
+*.pyc
+*.pyo
+*.pyd
+
+# Installation files
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+*.cover
+
+# Translations
+*.mo
+*.pot
+
+# Sublime Text
+*.tmlanguage
+*.tmPreferences
+*.sublime-keymap
+*.sublime-mousemap
+*.sublime-project
+*.sublime-workspace
+*.sublime-menu
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# JetBrains
+.idea/
+*.iml
+
+# Emacs
+*~
+#*
+
+# Vim
+*.swp
+*.swo
+
+# Compiled files
+*.class
+*.jar
+*.war
+*.ear
+
+# Node.js
+node_modules/
+
+# Yarn
+.yarn/
+.yarn-cache/
+
+# npm
+npm-debug.log*
+
+# pnpm
+.pnpm-store/
+
+# Bower
+bower_components/
+
+# Grunt
+Gruntfile.js
+
+# Gulp
+gulpfile.js
+
+# Webpack
+webpack.config.js
+
+# TypeScript
+*.tsbuildinfo
+
+# Sass
+.sass-cache/
+
+# Less
+.lesscache/
+
+# Stylus
+.styluscache/
+
+# PostCSS
+postcss.config.js
+
+# ESLint
+.eslintcache
+
+# Stylelint
+.stylelintcache
+
+# Prettier
+.prettiercache
+
+# EditorConfig
+.editorconfig
+
+# Babel
+babel.config.js
+
+# Jest
+jest.config.js
+
+# Mocha
+mocha.opts
+
+# Karma
+karma.conf.js
+
+# Protractor
+protractor.conf.js
+
+# Nightwatch
+nightwatch.conf.js
+
+# Cypress
+cypress/
+
+# Playwright
+playwright/
+
+# TestCafe
+testcafe/
+
+# Puppeteer
+puppeteer/
+
+# Selenium
+selenium/
+
+# Appium
+appium/
+
+# Browserstack
+browserstack/
+
+# Sauce Labs
+saucelabs/
+
+# Browserling
+browserling/
+
+# CrossBrowserTesting
+crossbrowsertesting/
+
+# TestingBot
+testingbot/
+
+# LambdaTest
+lambdatest/
+
+# End test

@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="5">
+    <title>MiniModal Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #334155;
+        }
+        .header h1 {
+            color: #f8fafc;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .header .uptime {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .card {
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #334155;
+        }
+        .card-title {
+            color: #94a3b8;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .card-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #f8fafc;
+        }
+        .card-sub {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        .section {
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border: 1px solid #334155;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #f8fafc;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-title .count {
+            background: #334155;
+            color: #94a3b8;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            text-align: left;
+            padding: 12px 8px;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #94a3b8;
+            border-bottom: 1px solid #334155;
+        }
+        td {
+            padding: 12px 8px;
+            border-bottom: 1px solid #1e293b;
+            font-size: 14px;
+        }
+        tr:hover {
+            background: #334155;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-idle, .status-ready, .status-completed {
+            background: #064e3b;
+            color: #34d399;
+        }
+        .status-busy, .status-running, .status-building {
+            background: #1e3a5f;
+            color: #60a5fa;
+        }
+        .status-failed, .status-offline {
+            background: #7f1d1d;
+            color: #f87171;
+        }
+        .status-queued, .status-pending {
+            background: #4a3f00;
+            color: #fbbf24;
+        }
+        .status-enabled {
+            background: #064e3b;
+            color: #34d399;
+        }
+        .status-disabled {
+            background: #374151;
+            color: #9ca3af;
+        }
+        .mono {
+            font-family: 'SF Mono', Consolas, monospace;
+            font-size: 13px;
+        }
+        .stream-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            background: #4a3f00;
+            color: #fbbf24;
+            margin-left: 4px;
+        }
+        .quota-bar {
+            background: #1e3a5f;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .quota-bar-fill {
+            background: #3b82f6;
+            height: 100%;
+            border-radius: 4px;
+        }
+        .quota-text {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+        .text-muted {
+            color: #64748b;
+        }
+        .refresh-note {
+            text-align: center;
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+        a {
+            color: #60a5fa;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .method-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 4px;
+        }
+        .method-GET {
+            background: #064e3b;
+            color: #34d399;
+        }
+        .method-POST {
+            background: #1e3a5f;
+            color: #60a5fa;
+        }
+        .method-PUT {
+            background: #4a3f00;
+            color: #fbbf24;
+        }
+        .method-DELETE {
+            background: #7f1d1d;
+            color: #f87171;
+        }
+        .secret-value {
+            font-family: 'SF Mono', Consolas, monospace;
+            font-size: 12px;
+            background: #0f172a;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .secret-value:hover {
+            background: #1e293b;
+        }
+        .time-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            background: #1e3a5f;
+            color: #60a5fa;
+        }
+        .time-badge.soon {
+            background: #4a3f00;
+            color: #fbbf24;
+        }
+        .time-badge.now {
+            background: #064e3b;
+            color: #34d399;
+        }
+        .test-btn {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #3b82f6;
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+        }
+        .test-btn:hover {
+            background: #2563eb;
+            text-decoration: none;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+        @media (max-width: 1024px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>MiniModal Dashboard</h1>
+        <div class="uptime">
+            {% if stats.uptime_seconds %}
+            Uptime: {{ "%.0f"|format(stats.uptime_seconds // 3600) }}h {{ "%.0f"|format((stats.uptime_seconds % 3600) // 60) }}m
+            {% else %}
+            Starting...
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="cards">
+        <div class="card">
+            <div class="card-title">Functions</div>
+            <div class="card-value">{{ stats.functions.total }}</div>
+            <div class="card-sub">
+                {% for status, count in stats.functions.by_status.items() %}
+                {{ count }} {{ status }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">Invocations</div>
+            <div class="card-value">{{ stats.invocations.total }}</div>
+            <div class="card-sub">
+                {{ stats.invocations.completed }} completed, {{ stats.invocations.failed }} failed
+                {% if stats.invocations.streaming %}
+                <span class="stream-badge">{{ stats.invocations.streaming }} streaming</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">Workers</div>
+            <div class="card-value">{{ stats.workers.total }}</div>
+            <div class="card-sub">
+                {{ stats.workers.idle }} idle, {{ stats.workers.busy }} busy
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">Resources</div>
+            <div class="card-value">{{ stats.workers.total_cpu_cores }} CPU</div>
+            <div class="card-sub">
+                {{ "%.1f"|format(stats.workers.total_memory_mb / 1024) }} GB RAM
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">Users</div>
+            <div class="card-value">{{ users|length }}</div>
+            <div class="card-sub">
+                {% set total_active = 0 %}
+                {% for user in users %}
+                {% set total_active = total_active + user.active_count %}
+                {% endfor %}
+                {{ total_active }} active tasks across all users
+            </div>
+        </div>
+    </div>
+
+    <!-- Workers Table -->
+    <div class="section">
+        <div class="section-title">Workers <span class="count">{{ workers.workers|length }}</span></div>
+        {% if workers.workers %}
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Status</th>
+                    <th>CPU</th>
+                    <th>Memory</th>
+                    <th>Tasks</th>
+                    <th>Last Heartbeat</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for worker in workers.workers %}
+                <tr>
+                    <td class="mono">{{ worker.worker_id }}</td>
+                    <td><span class="status status-{{ worker.status }}">{{ worker.status }}</span></td>
+                    <td>{{ worker.cpu_cores }} cores</td>
+                    <td>{{ worker.memory_mb }} MB</td>
+                    <td>{{ worker.tasks_completed }} / {{ worker.tasks_completed + worker.tasks_failed }}</td>
+                    <td class="text-muted">{{ worker.last_heartbeat[:19] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">No workers registered</div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Invocations Table -->
+    <div class="section">
+        <div class="section-title">Recent Invocations <span class="count">{{ invocations.invocations|length }}</span></div>
+        {% if invocations.invocations %}
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Function</th>
+                    <th>User</th>
+                    <th>Status</th>
+                    <th>Worker</th>
+                    <th>Duration</th>
+                    <th>Type</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in invocations.invocations[:15] %}
+                <tr>
+                    <td class="mono">{{ inv.id }}</td>
+                    <td>{{ inv.function_name }}</td>
+                    <td class="mono text-muted">{{ inv.user_id }}</td>
+                    <td><span class="status status-{{ inv.status }}">{{ inv.status }}</span></td>
+                    <td class="mono text-muted">{{ inv.worker_id or '-' }}</td>
+                    <td>{% if inv.duration_seconds %}{{ "%.3f"|format(inv.duration_seconds) }}s{% else %}-{% endif %}</td>
+                    <td>
+                        {% if inv.result_type == 'stream' %}
+                        <span class="stream-badge">stream</span>
+                        {% else %}
+                        single
+                        {% endif %}
+                    </td>
+                    <td class="text-muted">{{ inv.created_at[:19] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">No invocations yet</div>
+        {% endif %}
+    </div>
+
+    <!-- Functions Table -->
+    <div class="section">
+        <div class="section-title">Functions <span class="count">{{ functions.functions|length }}</span></div>
+        {% if functions.functions %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>App</th>
+                    <th>Status</th>
+                    <th>CPU/Memory</th>
+                    <th>Invocations</th>
+                    <th>Success Rate</th>
+                    <th>Avg Duration</th>
+                    <th>Streaming</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for func in functions.functions %}
+                <tr>
+                    <td>{{ func.name }}</td>
+                    <td class="text-muted">{{ func.app_name }}</td>
+                    <td><span class="status status-{{ func.status }}">{{ func.status }}</span></td>
+                    <td>{{ func.required_cpu }} / {{ func.required_memory }}MB</td>
+                    <td>{{ func.invocations.total }}</td>
+                    <td>{{ "%.0f"|format(func.invocations.success_rate * 100) }}%</td>
+                    <td>{% if func.invocations.avg_duration_seconds %}{{ "%.3f"|format(func.invocations.avg_duration_seconds) }}s{% else %}-{% endif %}</td>
+                    <td>
+                        {% if func.supports_streaming %}
+                        <span class="stream-badge">yes</span>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">No functions deployed</div>
+        {% endif %}
+    </div>
+
+    <!-- Two Column Grid for Resources -->
+    <div class="grid-2">
+        <!-- Volumes Section -->
+        <div class="section">
+            <div class="section-title">Volumes <span class="count">{{ volumes|length }}</span></div>
+            {% if volumes %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Size</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for vol in volumes %}
+                    <tr>
+                        <td class="mono">{{ vol.name }}</td>
+                        <td>{{ vol.size_human }}</td>
+                        <td class="text-muted">{{ vol.created_at[:10] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">No volumes created</div>
+            {% endif %}
+        </div>
+
+        <!-- Secrets Section -->
+        <div class="section">
+            <div class="section-title">Secrets <span class="count">{{ secrets|length }}</span></div>
+            {% if secrets %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Value</th>
+                        <th>Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for secret in secrets %}
+                    <tr>
+                        <td class="mono">{{ secret.name }}</td>
+                        <td>
+                            <span class="secret-value"
+                                  title="Click to reveal"
+                                  onclick="this.textContent = this.textContent === '{{ secret.masked_value }}' ? '{{ secret.value }}' : '{{ secret.masked_value }}'">
+                                {{ secret.masked_value }}
+                            </span>
+                        </td>
+                        <td class="text-muted">{{ secret.updated_at[:10] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">No secrets stored</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Web Endpoints Section -->
+    <div class="section">
+        <div class="section-title">Web Endpoints <span class="count">{{ web_endpoints|length }}</span></div>
+        {% if web_endpoints %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Method</th>
+                    <th>Path</th>
+                    <th>Function</th>
+                    <th>URL</th>
+                    <th>Test</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ep in web_endpoints %}
+                <tr>
+                    <td><span class="method-badge method-{{ ep.method }}">{{ ep.method }}</span></td>
+                    <td class="mono">{{ ep.path }}</td>
+                    <td>{{ ep.function_name }}</td>
+                    <td class="mono text-muted">{{ ep.full_url }}</td>
+                    <td>
+                        {% if ep.method == 'GET' %}
+                        <a href="{{ ep.full_url }}" target="_blank" class="test-btn">Open</a>
+                        {% else %}
+                        <button class="test-btn" onclick="testEndpoint('{{ ep.method }}', '{{ ep.full_url }}')">Test</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">No web endpoints registered</div>
+        {% endif %}
+    </div>
+
+    <!-- Schedules Section -->
+    <div class="section">
+        <div class="section-title">Schedules <span class="count">{{ schedules|length }}</span></div>
+        {% if schedules %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Function</th>
+                    <th>Schedule</th>
+                    <th>Status</th>
+                    <th>Last Run</th>
+                    <th>Next Run</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sched in schedules %}
+                <tr>
+                    <td>{{ sched.function_name }}</td>
+                    <td class="mono">
+                        {% if sched.cron_expression %}
+                        {{ sched.cron_expression }}
+                        {% elif sched.period_human %}
+                        Every {{ sched.period_human }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="status status-{{ 'enabled' if sched.enabled else 'disabled' }}">
+                            {{ 'enabled' if sched.enabled else 'disabled' }}
+                        </span>
+                    </td>
+                    <td class="text-muted">
+                        {% if sched.last_run %}
+                        {{ sched.last_run[:19] }}
+                        {% else %}
+                        Never
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="time-badge {% if sched.time_until_seconds < 60 %}now{% elif sched.time_until_seconds < 300 %}soon{% endif %}">
+                            {{ sched.time_until_human }}
+                        </span>
+                        <span class="text-muted" style="margin-left: 8px;">{{ sched.next_run[:19] }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">No schedules configured</div>
+        {% endif %}
+    </div>
+
+    <!-- Users Section -->
+    <div class="section">
+        <div class="section-title">Users <span class="count">{{ users|length }}</span></div>
+        {% if users %}
+        <table>
+            <thead>
+                <tr>
+                    <th>User ID</th>
+                    <th>Quota</th>
+                    <th>Active Tasks</th>
+                    <th>Pending Tasks</th>
+                    <th>Quota Usage</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td class="mono">{{ user.id }}</td>
+                    <td>{{ user.quota_limit }}</td>
+                    <td>{{ user.active_count }}</td>
+                    <td>{{ user.pending_count }}</td>
+                    <td>
+                        <div class="quota-bar">
+                            <div class="quota-bar-fill" style="width: {% if user.quota_limit > 0 %}{{ (user.active_count / user.quota_limit) * 100 }}{% else %}0{% endif %}%"></div>
+                        </div>
+                        <div class="quota-text">{{ user.active_count }}/{{ user.quota_limit }} ({{ "%.0f"|format((user.active_count / user.quota_limit * 100) if user.quota_limit > 0 else 0) }}%)</div>
+                    </td>
+                    <td class="text-muted">{{ user.created_at[:10] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">No users registered</div>
+        {% endif %}
+    </div>
+
+    <div class="refresh-note">
+        Auto-refreshes every 5 seconds
+    </div>
+
+    <script>
+        async function testEndpoint(method, url) {
+            try {
+                const response = await fetch(url, { method: method });
+                const text = await response.text();
+                alert(`${method} ${url}\n\nStatus: ${response.status}\n\nResponse:\n${text.substring(0, 500)}`);
+            } catch (e) {
+                alert(`Error: ${e.message}`);
+            }
+        }
+    </script>
+</body>
+</html>

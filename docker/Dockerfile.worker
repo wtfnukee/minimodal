@@ -1,0 +1,35 @@
+# MiniModal Worker Base Image
+#
+# This image contains the worker executor that polls the control plane
+# for tasks and executes them.
+#
+# Build:
+#   docker build -f docker/Dockerfile.worker -t minimodal-worker:3.11 .
+#
+# Run:
+#   docker run -e MINIMODAL_SERVER_URL=http://host.docker.internal:8000 minimodal-worker:3.11
+
+ARG PYTHON_VERSION=3.11
+FROM python:${PYTHON_VERSION}-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY pyproject.toml ./
+RUN pip install --no-cache-dir cloudpickle httpx websockets
+
+# Copy worker code
+COPY minimodal/worker/executor.py /app/executor.py
+COPY minimodal/worker/__init__.py /app/worker_init.py
+
+# Environment variables
+ENV MINIMODAL_SERVER_URL=http://localhost:8000
+ENV MINIMODAL_POLL_INTERVAL=1.0
+
+# Entry point
+CMD ["python", "/app/executor.py"]
