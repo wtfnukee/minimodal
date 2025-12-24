@@ -200,7 +200,7 @@ class App:
                         },
                     )
                     response.raise_for_status()
-                    endpoint_data = response.json()
+                    response.json()
                     print(
                         f"  Registered web endpoint: {endpoint.method} {endpoint.path}"
                     )

@@ -12,7 +12,6 @@ import logging
 import threading
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 
 class CronScheduler:
@@ -45,7 +44,7 @@ class CronScheduler:
         self.engine = engine
         self.check_interval = check_interval
         self._running = False
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._logger = logging.getLogger("minimodal.cron_scheduler")
 
     def start(self) -> None:
@@ -93,7 +92,7 @@ class CronScheduler:
             # Find all enabled schedules that are due
             due_schedules = session.exec(
                 select(ScheduleRecord).where(
-                    ScheduleRecord.enabled == True,
+                    ScheduleRecord.enabled,
                     ScheduleRecord.next_run <= now,
                 )
             ).all()
@@ -164,8 +163,8 @@ class CronScheduler:
 
 
 def calculate_initial_next_run(
-    cron_expression: Optional[str] = None,
-    period_seconds: Optional[int] = None,
+    cron_expression: str | None = None,
+    period_seconds: int | None = None,
 ) -> datetime:
     """
     Calculate the initial next_run time for a new schedule.
@@ -193,7 +192,7 @@ def calculate_initial_next_run(
 
 
 # Global cron scheduler instance
-_cron_scheduler: Optional[CronScheduler] = None
+_cron_scheduler: CronScheduler | None = None
 
 
 def get_cron_scheduler(engine) -> CronScheduler:

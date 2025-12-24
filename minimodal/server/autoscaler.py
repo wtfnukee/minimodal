@@ -11,8 +11,8 @@ Scaling policy:
 
 import asyncio
 import logging
+from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import Optional, Callable
 
 logger = logging.getLogger("minimodal.autoscaler")
 
@@ -66,14 +66,14 @@ class Autoscaler:
         self.default_image = default_image
 
         self._running = False
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
         self._last_activity = datetime.now(timezone.utc)
         self._scale_up_count = 0
         self._scale_down_count = 0
 
         # Callbacks for custom scaling logic
-        self._on_scale_up: Optional[Callable[[int], None]] = None
-        self._on_scale_down: Optional[Callable[[int], None]] = None
+        self._on_scale_up: Callable[[int], None] | None = None
+        self._on_scale_down: Callable[[int], None] | None = None
 
     async def start(self):
         """Start the autoscaler loop."""
@@ -212,8 +212,8 @@ class Autoscaler:
 
     def set_callbacks(
         self,
-        on_scale_up: Optional[Callable[[int], None]] = None,
-        on_scale_down: Optional[Callable[[int], None]] = None,
+        on_scale_up: Callable[[int], None] | None = None,
+        on_scale_down: Callable[[int], None] | None = None,
     ):
         """Set optional callbacks for scaling events."""
         self._on_scale_up = on_scale_up
@@ -238,10 +238,10 @@ class Autoscaler:
 
 
 # Global autoscaler instance
-_autoscaler: Optional[Autoscaler] = None
+_autoscaler: Autoscaler | None = None
 
 
-def get_autoscaler() -> Optional[Autoscaler]:
+def get_autoscaler() -> Autoscaler | None:
     """Get the global autoscaler instance."""
     return _autoscaler
 

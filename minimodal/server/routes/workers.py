@@ -20,7 +20,7 @@ from minimodal.server.models import (
     ResultType,
 )
 from minimodal.server.task_scheduler import get_scheduler
-from minimodal.server.websocket import streaming_manager
+from minimodal.server.websocket import streaming_manager, result_manager
 
 logger = logging.getLogger("minimodal.server")
 
@@ -220,7 +220,7 @@ def poll_for_work(worker_id: str = None):
 
 
 @router.post("/internal/complete/{invocation_id}")
-def complete_invocation(
+async def complete_invocation(
     invocation_id: int,
     worker_id: str = None,
     pickled_result: str = None,
@@ -300,7 +300,13 @@ def complete_invocation(
 
         session.commit()
 
-        return {"status": "ok"}
+    # Notify clients waiting for result via WebSocket
+    if error:
+        await result_manager.send_error(invocation_id, error)
+    else:
+        await result_manager.send_result(invocation_id, pickled_result)
+
+    return {"status": "ok"}
 
 
 @router.websocket("/ws/worker/{worker_id}")
@@ -405,6 +411,9 @@ async def worker_websocket(
                 if scheduler and user_id:
                     await scheduler.task_completed(user_id, invocation_id)
 
+                # Notify clients waiting for result via WebSocket
+                await result_manager.send_result(invocation_id, pickled_result)
+
                 # Mark WebSocket worker as available
                 await _ws_manager.mark_task_complete(worker_id)
                 logger.info(f"Task {invocation_id} completed by WebSocket worker {worker_id}")
@@ -475,6 +484,9 @@ async def worker_websocket(
                 scheduler = get_scheduler()
                 if scheduler and user_id:
                     await scheduler.task_failed(user_id, invocation_id)
+
+                # Notify clients waiting for result via WebSocket
+                await result_manager.send_error(invocation_id, error_msg or "Unknown error")
 
                 # Mark WebSocket worker as available
                 await _ws_manager.mark_task_complete(worker_id)

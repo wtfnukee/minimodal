@@ -13,7 +13,6 @@ import platform
 import threading
 import time
 from datetime import datetime, timezone
-from typing import Optional
 
 logger = logging.getLogger("minimodal.containers")
 
@@ -40,7 +39,7 @@ class ContainerInfo:
         container_id: str,
         image_tag: str,
         started_at: datetime,
-        function_id: Optional[int] = None,
+        function_id: int | None = None,
     ):
         self.container_id = container_id
         self.image_tag = image_tag
@@ -73,7 +72,7 @@ class ContainerManager:
         self._containers: dict[str, ContainerInfo] = {}
         self._client = None
         self._lock = threading.Lock()
-        self._cleanup_thread: Optional[threading.Thread] = None
+        self._cleanup_thread: threading.Thread | None = None
         self._running = False
 
     def _get_client(self):
@@ -103,8 +102,8 @@ class ContainerManager:
     def start_container(
         self,
         image_tag: str,
-        function_id: Optional[int] = None,
-        environment: Optional[dict] = None,
+        function_id: int | None = None,
+        environment: dict | None = None,
     ) -> str:
         """
         Start a new worker container.
@@ -187,7 +186,7 @@ class ContainerManager:
                 self._containers.pop(container_id, None)
             return False
 
-    def get_container_status(self, container_id: str) -> Optional[str]:
+    def get_container_status(self, container_id: str) -> str | None:
         """
         Get the status of a container.
 
@@ -305,7 +304,7 @@ class ContainerManager:
 
 
 # Global container manager
-_manager: Optional[ContainerManager] = None
+_manager: ContainerManager | None = None
 
 
 def get_container_manager(

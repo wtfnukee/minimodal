@@ -106,10 +106,6 @@ class FunctionCall:
 
             if response.status == InvocationStatus.COMPLETED:
                 # Cache the result
-                import base64
-
-                import cloudpickle
-
                 if response.pickled_result:
                     decoded = base64.b64decode(response.pickled_result)
                     self._result = cloudpickle.loads(decoded)
@@ -331,8 +327,6 @@ def wait_first(*futures: FunctionCall, timeout: float = 300.0) -> FunctionCall:
         TimeoutError: If timeout is reached before any complete
         ValueError: If no futures are provided
     """
-    import time
-
     if not futures:
         raise ValueError("At least one future is required")
 

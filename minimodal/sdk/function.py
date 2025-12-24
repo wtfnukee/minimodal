@@ -1,6 +1,6 @@
 """Function wrapper that enables local and remote execution."""
 
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Iterable
 
 from minimodal.sdk.client import DeploymentError, get_client
 from minimodal.sdk.future import FunctionCall
@@ -60,7 +60,7 @@ class Function:
         self._retries = retries
 
         # Set after deployment
-        self._function_id: Optional[int] = None
+        self._function_id: int | None = None
         self._deployed = False
 
         # Preserve function metadata
@@ -241,7 +241,7 @@ class Function:
         return self._function_id
 
     @property
-    def function_id(self) -> Optional[int]:
+    def function_id(self) -> int | None:
         return self._function_id
 
     @property

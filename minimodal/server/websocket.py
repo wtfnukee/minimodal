@@ -11,7 +11,7 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Optional
+
 from fastapi import WebSocket
 
 logger = logging.getLogger("minimodal.websocket")
@@ -25,7 +25,7 @@ class ConnectedWorker:
     cpu_cores: int = 1
     memory_mb: int = 1024
     is_busy: bool = False
-    current_task_id: Optional[int] = None
+    current_task_id: int | None = None
     connected_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     tasks_completed: int = 0
 
@@ -86,7 +86,7 @@ class WorkerConnectionManager:
                     logger.warning(f"Worker {worker_id} disconnected while processing task {worker.current_task_id}")
                     # The task will timeout and be handled by the server
 
-    def get_worker(self, worker_id: str) -> Optional[ConnectedWorker]:
+    def get_worker(self, worker_id: str) -> ConnectedWorker | None:
         """Get a connected worker by ID."""
         return self._workers.get(worker_id)
 
@@ -102,7 +102,7 @@ class WorkerConnectionManager:
         self,
         required_cpu: int = 1,
         required_memory: int = 512,
-    ) -> Optional[ConnectedWorker]:
+    ) -> ConnectedWorker | None:
         """
         Find an available worker that can handle the task.
 
@@ -346,6 +346,108 @@ class StreamingConnectionManager:
         return invocation_id in self._clients and len(self._clients[invocation_id]) > 0
 
 
+@dataclass
+class ResultClient:
+    """Tracks a client connected to receive a single result."""
+    invocation_id: int
+    websocket: WebSocket
+    connected_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ResultConnectionManager:
+    """
+    Manages WebSocket connections from clients waiting for function results.
+
+    Instead of polling, clients connect via WebSocket and receive a push
+    notification when the result is ready.
+    """
+
+    def __init__(self):
+        # Map invocation_id -> list of connected clients
+        self._clients: dict[int, list[ResultClient]] = {}
+        self._lock = asyncio.Lock()
+
+    async def connect(
+        self,
+        websocket: WebSocket,
+        invocation_id: int,
+    ) -> ResultClient:
+        """Register a client to receive result notification."""
+        await websocket.accept()
+
+        async with self._lock:
+            client = ResultClient(
+                invocation_id=invocation_id,
+                websocket=websocket,
+            )
+            if invocation_id not in self._clients:
+                self._clients[invocation_id] = []
+            self._clients[invocation_id].append(client)
+            logger.debug(f"Client connected for result {invocation_id}")
+
+        return client
+
+    async def disconnect(self, invocation_id: int, client: ResultClient):
+        """Handle client disconnection."""
+        async with self._lock:
+            if invocation_id in self._clients:
+                self._clients[invocation_id] = [
+                    c for c in self._clients[invocation_id] if c != client
+                ]
+                if not self._clients[invocation_id]:
+                    del self._clients[invocation_id]
+                logger.debug(f"Client disconnected from result {invocation_id}")
+
+    async def send_result(
+        self,
+        invocation_id: int,
+        pickled_result: str | None,  # base64 encoded
+    ):
+        """Send result to all clients waiting for this invocation."""
+        async with self._lock:
+            clients = self._clients.get(invocation_id, [])
+
+        for client in clients:
+            try:
+                await client.websocket.send_json({
+                    "type": "result",
+                    "invocation_id": invocation_id,
+                    "pickled_result": pickled_result,
+                })
+            except Exception:
+                pass
+
+        # Clean up all clients for this invocation
+        async with self._lock:
+            if invocation_id in self._clients:
+                del self._clients[invocation_id]
+
+    async def send_error(self, invocation_id: int, error: str):
+        """Notify clients of an error."""
+        async with self._lock:
+            clients = self._clients.get(invocation_id, [])
+
+        for client in clients:
+            try:
+                await client.websocket.send_json({
+                    "type": "error",
+                    "invocation_id": invocation_id,
+                    "error": error,
+                })
+            except Exception:
+                pass
+
+        # Clean up all clients for this invocation
+        async with self._lock:
+            if invocation_id in self._clients:
+                del self._clients[invocation_id]
+
+    def has_clients(self, invocation_id: int) -> bool:
+        """Check if there are clients waiting for this invocation."""
+        return invocation_id in self._clients and len(self._clients[invocation_id]) > 0
+
+
 # Global connection manager instances
 manager = WorkerConnectionManager()
 streaming_manager = StreamingConnectionManager()
+result_manager = ResultConnectionManager()

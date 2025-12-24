@@ -1,7 +1,6 @@
 """Container image definition with fluent builder API."""
 
 import hashlib
-from typing import Optional
 
 
 class Image:
@@ -101,9 +100,9 @@ class Image:
     def pip_install(
         self,
         *packages: str,
-        find_links: Optional[str] = None,
-        index_url: Optional[str] = None,
-        extra_index_url: Optional[str] = None,
+        find_links: str | None = None,
+        index_url: str | None = None,
+        extra_index_url: str | None = None,
     ) -> "Image":
         """
         Install pip packages.

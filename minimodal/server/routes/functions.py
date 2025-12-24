@@ -24,7 +24,7 @@ from minimodal.server.models import (
     StreamResultsResponse,
 )
 from minimodal.server.task_scheduler import get_scheduler
-from minimodal.server.websocket import streaming_manager
+from minimodal.server.websocket import streaming_manager, result_manager
 
 logger = logging.getLogger("minimodal.server")
 
@@ -440,3 +440,57 @@ async def stream_websocket(websocket: WebSocket, invocation_id: int):
 
     finally:
         await streaming_manager.disconnect(invocation_id, client)
+
+
+@router.websocket("/ws/result/{invocation_id}")
+async def websocket_result(websocket: WebSocket, invocation_id: int):
+    """
+    WebSocket endpoint for receiving function results.
+
+    Clients connect here instead of polling /result/{id}.
+    When the result is ready, it's pushed to the client.
+    """
+    # Verify invocation exists
+    with _get_session() as session:
+        invocation = session.get(InvocationRecord, invocation_id)
+        if not invocation:
+            await websocket.close(code=4004, reason="Invocation not found")
+            return
+
+        # If already completed, send result immediately
+        if invocation.status == InvocationStatus.COMPLETED:
+            await websocket.accept()
+            await websocket.send_json({
+                "type": "result",
+                "invocation_id": invocation_id,
+                "pickled_result": base64.b64encode(invocation.pickled_result).decode() if invocation.pickled_result else None,
+            })
+            await websocket.close()
+            return
+
+        if invocation.status == InvocationStatus.FAILED:
+            await websocket.accept()
+            await websocket.send_json({
+                "type": "error",
+                "invocation_id": invocation_id,
+                "error": invocation.error_message,
+            })
+            await websocket.close()
+            return
+
+    # Subscribe to result notifications
+    client = await result_manager.connect(websocket, invocation_id)
+
+    try:
+        # Keep connection open until result arrives
+        while True:
+            try:
+                # Wait for client messages (ping/pong or disconnect)
+                data = await websocket.receive_json()
+                if data.get("type") == "ping":
+                    await websocket.send_json({"type": "pong"})
+            except WebSocketDisconnect:
+                break
+
+    finally:
+        await result_manager.disconnect(invocation_id, client)

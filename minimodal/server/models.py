@@ -2,9 +2,9 @@
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
-from sqlmodel import SQLModel, Field
+
 from pydantic import BaseModel
+from sqlmodel import Field, SQLModel
 
 
 def utc_now() -> datetime:
@@ -47,7 +47,7 @@ class FunctionRecord(SQLModel, table=True):
     """A registered serverless function."""
     __tablename__ = "functions"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     app_name: str = Field(index=True)
 
@@ -57,18 +57,18 @@ class FunctionRecord(SQLModel, table=True):
     # Image configuration
     python_version: str = "3.11"
     requirements: str = ""  # newline-separated pip packages
-    image_tag: Optional[str] = None  # Docker image tag once built
-    image_config: Optional[str] = None  # JSON-serialized Image config
+    image_tag: str | None = None  # Docker image tag once built
+    image_config: str | None = None  # JSON-serialized Image config
 
     # Resource requirements
     required_cpu: int = Field(default=1)  # Number of CPU cores
     required_memory: int = Field(default=512)  # Memory in MB
 
     # Volume mounts: JSON dict {"/mount/path": "volume-name"}
-    volume_mounts: Optional[str] = None
+    volume_mounts: str | None = None
 
     # Secrets: JSON list ["SECRET_NAME_1", "SECRET_NAME_2"]
-    secrets: Optional[str] = None
+    secrets: str | None = None
 
     # Execution configuration
     timeout_seconds: int = Field(default=300)  # Task timeout (5 min default)
@@ -76,7 +76,7 @@ class FunctionRecord(SQLModel, table=True):
     retry_backoff_base: float = Field(default=2.0)  # Exponential backoff multiplier
 
     status: FunctionStatus = FunctionStatus.PENDING
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
@@ -86,7 +86,7 @@ class InvocationRecord(SQLModel, table=True):
     """A single function invocation."""
     __tablename__ = "invocations"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     function_id: int = Field(foreign_key="functions.id", index=True)
     user_id: str = Field(default="default", index=True)  # Owner for quota tracking
 
@@ -94,8 +94,8 @@ class InvocationRecord(SQLModel, table=True):
     pickled_args: bytes
 
     # Result (once completed)
-    pickled_result: Optional[bytes] = None
-    error_message: Optional[str] = None
+    pickled_result: bytes | None = None
+    error_message: str | None = None
 
     # Streaming support
     result_type: ResultType = Field(default=ResultType.SINGLE)
@@ -106,27 +106,27 @@ class InvocationRecord(SQLModel, table=True):
 
     # Timing
     created_at: datetime = Field(default_factory=utc_now)
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    timeout_at: Optional[datetime] = None  # When this invocation should timeout
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    timeout_at: datetime | None = None  # When this invocation should timeout
 
     # Retry tracking
     retry_count: int = Field(default=0)  # Current retry attempt number
     max_retries: int = Field(default=3)  # Max retries allowed
-    next_retry_at: Optional[datetime] = None  # When to retry next
+    next_retry_at: datetime | None = None  # When to retry next
 
     # Dead letter queue
-    dead_letter_reason: Optional[str] = None  # Why it ended up in DLQ
+    dead_letter_reason: str | None = None  # Why it ended up in DLQ
 
     # Which worker handled it
-    worker_id: Optional[str] = None
+    worker_id: str | None = None
 
 
 class StreamChunkRecord(SQLModel, table=True):
     """Individual chunk from a streaming function result."""
     __tablename__ = "stream_chunks"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     invocation_id: int = Field(foreign_key="invocations.id", index=True)
     sequence: int  # Order of this chunk (0-indexed)
     pickled_value: bytes  # Serialized yielded value
@@ -137,7 +137,7 @@ class VolumeRecord(SQLModel, table=True):
     """Persistent volume metadata."""
     __tablename__ = "volumes"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     name: str = Field(unique=True, index=True)
     created_at: datetime = Field(default_factory=utc_now)
     size_bytes: int = Field(default=0)
@@ -148,7 +148,7 @@ class SecretRecord(SQLModel, table=True):
     """Encrypted secret storage."""
     __tablename__ = "secrets"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     name: str = Field(unique=True, index=True)
     encrypted_value: str  # Base64-encoded encrypted value
     created_at: datetime = Field(default_factory=utc_now)
@@ -159,7 +159,7 @@ class WebEndpointRecord(SQLModel, table=True):
     """HTTP endpoint routing."""
     __tablename__ = "web_endpoints"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     path: str = Field(index=True)
     method: str = Field(default="GET")
     function_id: int = Field(foreign_key="functions.id")
@@ -170,11 +170,11 @@ class ScheduleRecord(SQLModel, table=True):
     """Cron/periodic schedule for functions."""
     __tablename__ = "schedules"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     function_id: int = Field(foreign_key="functions.id")
-    cron_expression: Optional[str] = None
-    period_seconds: Optional[int] = None
-    last_run: Optional[datetime] = None
+    cron_expression: str | None = None
+    period_seconds: int | None = None
+    last_run: datetime | None = None
     next_run: datetime
     enabled: bool = Field(default=True)
     created_at: datetime = Field(default_factory=utc_now)
@@ -184,7 +184,7 @@ class WorkerRecord(SQLModel, table=True):
     """Registered worker with resource capabilities."""
     __tablename__ = "workers"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     worker_id: str = Field(unique=True, index=True)
 
     # Resource capabilities
@@ -193,7 +193,7 @@ class WorkerRecord(SQLModel, table=True):
 
     # Status tracking
     status: WorkerStatus = Field(default=WorkerStatus.IDLE)
-    current_invocation_id: Optional[int] = None
+    current_invocation_id: int | None = None
 
     # Heartbeat
     last_heartbeat: datetime = Field(default_factory=utc_now)
@@ -205,9 +205,9 @@ class WorkerRecord(SQLModel, table=True):
 
     # Circuit breaker
     failure_count: int = Field(default=0)  # Failures in current window
-    failure_window_start: Optional[datetime] = None  # When window started
+    failure_window_start: datetime | None = None  # When window started
     is_healthy: bool = Field(default=True)  # Circuit breaker state
-    circuit_open_until: Optional[datetime] = None  # Cooldown end time
+    circuit_open_until: datetime | None = None  # Cooldown end time
 
 
 class UserRecord(SQLModel, table=True):
@@ -234,11 +234,11 @@ class DeployRequest(BaseModel):
     pickled_code: bytes  # base64 encoded in JSON
     python_version: str = "3.11"
     requirements: list[str] = []
-    image_config: Optional[dict] = None  # Serialized Image configuration
+    image_config: dict | None = None  # Serialized Image configuration
     cpu: int = 1  # Required CPU cores
     memory: int = 512  # Required memory in MB
-    volume_mounts: Optional[dict[str, str]] = None  # {"/mount/path": "volume-name"}
-    secrets: Optional[list[str]] = None  # ["SECRET_NAME_1", "SECRET_NAME_2"]
+    volume_mounts: dict[str, str] | None = None  # {"/mount/path": "volume-name"}
+    secrets: list[str] | None = None  # ["SECRET_NAME_1", "SECRET_NAME_2"]
     timeout: int = 300  # Task timeout in seconds
     max_retries: int = 3  # Number of retry attempts
     retry_backoff_base: float = 2.0  # Exponential backoff multiplier
@@ -278,8 +278,8 @@ class ResultResponse(BaseModel):
     """Response when fetching result."""
     invocation_id: int
     status: InvocationStatus
-    pickled_result: Optional[bytes] = None
-    error_message: Optional[str] = None
+    pickled_result: bytes | None = None
+    error_message: str | None = None
     # Streaming info
     result_type: ResultType = ResultType.SINGLE
     is_generator: bool = False
@@ -298,7 +298,7 @@ class StreamResultsResponse(BaseModel):
     result_type: ResultType
     chunks: list[StreamChunkResponse]
     total_chunks: int  # Total chunks received so far
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 # === Volume Schemas ===
@@ -361,9 +361,9 @@ class ScheduleResponse(BaseModel):
     """Schedule information."""
     id: int
     function_id: int
-    cron_expression: Optional[str] = None
-    period_seconds: Optional[int] = None
-    last_run: Optional[datetime] = None
+    cron_expression: str | None = None
+    period_seconds: int | None = None
+    last_run: datetime | None = None
     next_run: datetime
     enabled: bool
 
@@ -389,7 +389,7 @@ class WorkerResponse(BaseModel):
     cpu_cores: int
     memory_mb: int
     status: str
-    current_invocation_id: Optional[int]
+    current_invocation_id: int | None
     tasks_completed: int
     tasks_failed: int
     last_heartbeat: datetime

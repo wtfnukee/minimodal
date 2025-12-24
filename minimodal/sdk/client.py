@@ -1,12 +1,15 @@
 """HTTP client for communicating with the control plane."""
 
 import base64
+import json
 import os
 import time
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, TypeVar
 
 import cloudpickle
 import httpx
+from websockets.exceptions import ConnectionClosed
+from websockets.sync.client import connect
 
 from minimodal.server.models import (
     BatchInvokeRequest,
@@ -19,6 +22,7 @@ from minimodal.server.models import (
     ResultResponse,
     SecretCreateRequest,
     SecretResponse,
+    StreamResultsResponse,
     VolumeCreateRequest,
     VolumeResponse,
 )
@@ -371,8 +375,6 @@ class MiniModalClient:
             InvocationError: If result retrieval fails
             ConnectionError: If unable to connect to server
         """
-        from minimodal.server.models import StreamResultsResponse
-
         try:
             response = self._request(
                 "GET",
@@ -410,11 +412,6 @@ class MiniModalClient:
             ConnectionError: If unable to connect to WebSocket
             InvocationError: If streaming fails
         """
-        import json
-
-        from websockets.exceptions import ConnectionClosed
-        from websockets.sync.client import connect
-
         # Convert HTTP URL to WebSocket URL
         ws_url = self.base_url.replace("http://", "ws://").replace("https://", "wss://")
         ws_url = f"{ws_url}/ws/stream/{invocation_id}"
@@ -462,14 +459,18 @@ class MiniModalClient:
         invocation_id: int,
         poll_interval: float = 0.5,
         timeout: float = 300.0,
+        use_websocket: bool = True,
     ) -> Any:
         """
         Wait for invocation to complete and return deserialized result.
 
+        Uses WebSocket for push-based notification by default, with HTTP polling as fallback.
+
         Args:
             invocation_id: ID of the invocation
-            poll_interval: Seconds between status checks
+            poll_interval: Seconds between status checks (only used if WebSocket fails)
             timeout: Maximum time to wait (seconds)
+            use_websocket: Use WebSocket for result notification (default: True)
 
         Returns:
             The deserialized result of the function
@@ -479,6 +480,61 @@ class MiniModalClient:
             RemoteError: If the remote function raised an exception
             InvocationError: If result retrieval fails
         """
+        if use_websocket:
+            try:
+                return self._wait_for_result_websocket(invocation_id, timeout)
+            except Exception:
+                # Fall back to HTTP polling if WebSocket fails
+                pass
+
+        return self._wait_for_result_polling(invocation_id, poll_interval, timeout)
+
+    def _wait_for_result_websocket(
+        self,
+        invocation_id: int,
+        timeout: float = 300.0,
+    ) -> Any:
+        """Wait for result using WebSocket push notification."""
+        # Convert HTTP URL to WebSocket URL
+        ws_url = self.base_url.replace("http://", "ws://").replace("https://", "wss://")
+        ws_url = f"{ws_url}/ws/result/{invocation_id}"
+
+        try:
+            with connect(ws_url, close_timeout=timeout) as ws:
+                message = ws.recv(timeout=timeout)
+                data = json.loads(message)
+                msg_type = data.get("type")
+
+                if msg_type == "result":
+                    pickled_result = data.get("pickled_result")
+                    if pickled_result:
+                        decoded = base64.b64decode(pickled_result)
+                        return cloudpickle.loads(decoded)
+                    return None
+
+                elif msg_type == "error":
+                    raise RemoteError(
+                        "Remote function raised an exception",
+                        remote_traceback=data.get("error"),
+                    )
+
+                else:
+                    raise InvocationError(f"Unexpected message type: {msg_type}")
+
+        except ConnectionClosed:
+            raise InvocationError("WebSocket connection closed unexpectedly")
+        except Exception as e:
+            if isinstance(e, (RemoteError, InvocationError, TimeoutError)):
+                raise
+            raise ConnectionError(f"WebSocket connection failed: {e}") from e
+
+    def _wait_for_result_polling(
+        self,
+        invocation_id: int,
+        poll_interval: float = 0.5,
+        timeout: float = 300.0,
+    ) -> Any:
+        """Wait for result using HTTP polling (fallback)."""
         start = time.time()
 
         while time.time() - start < timeout:
@@ -714,7 +770,7 @@ class MiniModalClient:
 
 
 # Global client instance
-_client: Optional[MiniModalClient] = None
+_client: MiniModalClient | None = None
 # You should know that I hate this choice as much as you do,
 # but I can't come up with better solution
 

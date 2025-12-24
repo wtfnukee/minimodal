@@ -14,7 +14,7 @@ import hashlib
 import logging
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from minimodal.sdk.image import Image
@@ -115,7 +115,7 @@ class ImageBuilder:
     - Build queue
     """
 
-    def __init__(self, registry_url: Optional[str] = None):
+    def __init__(self, registry_url: str | None = None):
         self.registry_url = registry_url
         self._client = None  # Lazy loaded
 

@@ -15,8 +15,9 @@ import signal
 import subprocess
 import tempfile
 import traceback
+import uuid
 from pathlib import Path
-from typing import Optional
+from typing import Callable
 
 import cloudpickle
 import httpx
@@ -54,7 +55,7 @@ class Worker:
     def __init__(
         self,
         control_plane_url: str = "http://localhost:8000",
-        worker_id: Optional[str] = None,
+        worker_id: str | None = None,
         cpu_cores: int = 1,
         memory_mb: int = 1024,
     ):
@@ -68,15 +69,13 @@ class Worker:
         self._http_client = httpx.AsyncClient(timeout=30.0)
         self._running = False
         self._shutting_down = False
-        self._current_task: Optional[int] = None
-        self._ws: Optional[websockets.WebSocketClientProtocol] = None
+        self._current_task: int | None = None
+        self._ws: websockets.WebSocketClientProtocol | None = None
 
         # Validate and cap resources to actual system limits
         self.cpu_cores, self.memory_mb = self._validate_resources()
 
     def _generate_worker_id(self) -> str:
-        import uuid
-
         return f"worker-{uuid.uuid4().hex[:8]}"
 
     def _validate_resources(self) -> tuple[int, int]:
@@ -144,7 +143,7 @@ class Worker:
         logger.error(f"Control plane not available after {timeout}s")
         return False
 
-    async def _get_secret_value(self, secret_name: str) -> Optional[str]:
+    async def _get_secret_value(self, secret_name: str) -> str | None:
         """Fetch secret value from control plane."""
         try:
             response = await self._http_client.get(
@@ -168,7 +167,7 @@ class Worker:
         except Exception:
             return False
 
-    async def execute(self, task: dict) -> tuple[Optional[bytes], Optional[str], bool]:
+    async def execute(self, task: dict) -> tuple[bytes | None, str | None, bool]:
         """
         Execute a task, optionally in a container if image_tag is provided.
 
@@ -185,7 +184,7 @@ class Worker:
 
     async def _execute_local(
         self, task: dict
-    ) -> tuple[Optional[bytes], Optional[str], bool]:
+    ) -> tuple[bytes | None, str | None, bool]:
         """Execute task locally (without container).
 
         WARNING: Local execution does NOT enforce CPU/memory limits.
@@ -258,7 +257,7 @@ class Worker:
     async def _stream_generator_results(
         self,
         invocation_id: int,
-        func: callable,
+        func: Callable,
         args: tuple,
         kwargs: dict,
     ):
@@ -324,7 +323,7 @@ class Worker:
 
     async def _execute_in_container(
         self, task: dict, image_tag: str
-    ) -> tuple[Optional[bytes], Optional[str], bool]:
+    ) -> tuple[bytes | None, str | None, bool]:
         """Execute task in a Docker container with volume mounts, secrets, and resource limits.
 
         Supports both regular functions and generator functions with streaming.
@@ -646,7 +645,7 @@ except Exception as e:
                         try:
                             # Wait for messages from server
                             message = await asyncio.wait_for(ws.recv(), timeout=30.0)
-                            data = __import__("json").loads(message)
+                            data = json.loads(message)
                             msg_type = data.get("type")
 
                             if msg_type == "task":
@@ -657,16 +656,12 @@ except Exception as e:
 
                             elif msg_type == "ping":
                                 # Respond to keep-alive
-                                await ws.send(
-                                    __import__("json").dumps({"type": "pong"})
-                                )
+                                await ws.send(json.dumps({"type": "pong"}))
 
                         except asyncio.TimeoutError:
                             # Send a pong to keep connection alive
                             try:
-                                await ws.send(
-                                    __import__("json").dumps({"type": "pong"})
-                                )
+                                await ws.send(json.dumps({"type": "pong"}))
                             except Exception:
                                 break
 

@@ -15,7 +15,6 @@ import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
-from typing import Optional
 
 from sqlmodel import select
 
@@ -84,7 +83,7 @@ class TaskScheduler:
         self._users: dict[str, SchedulerUser] = {}
         self._lock = asyncio.Lock()
         self._running = False
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
         self._schedule_event = asyncio.Event()
 
     async def start(self):
@@ -401,10 +400,10 @@ class TaskScheduler:
 
 
 # Global scheduler instance
-_scheduler: Optional[TaskScheduler] = None
+_scheduler: TaskScheduler | None = None
 
 
-def get_scheduler() -> Optional[TaskScheduler]:
+def get_scheduler() -> TaskScheduler | None:
     """Get the global scheduler instance."""
     return _scheduler
 
